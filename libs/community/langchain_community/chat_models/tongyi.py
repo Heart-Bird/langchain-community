@@ -892,16 +892,9 @@ class ChatTongyi(BaseChatModel):
         if kwargs:
             raise ValueError(f"Received unsupported arguments {kwargs}")
         is_pydantic_schema = isinstance(schema, type) and is_basemodel_subclass(schema)
-        llm = self.bind_tools(
-            [schema], 
-            tool_choice={
-                "type": "function",
-                "function": {
-                    "name": schema.__name__
-                }
-            }
-        )
+
         if is_pydantic_schema:
+            key_name = schema.__name__  # type: ignore[union-attr]
             output_parser: OutputParserLike = PydanticToolsParser(
                 tools=[schema],  # type: ignore[list-item]
                 first_tool_only=True,
@@ -911,6 +904,10 @@ class ChatTongyi(BaseChatModel):
             output_parser = JsonOutputKeyToolsParser(
                 key_name=key_name, first_tool_only=True
             )
+
+        llm = self.bind_tools(
+            [schema], tool_choice={"type": "function", "function": {"name": key_name}}
+        )
 
         if include_raw:
             parser_assign = RunnablePassthrough.assign(
